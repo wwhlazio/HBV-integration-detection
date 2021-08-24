@@ -1,0 +1,22 @@
+#!/bin/bash
+#BSUB -P acc_GTEX
+#BSUB -q premium
+#BSUB -J 11nVF+last_step
+#BSUB -R "rusage[mem=30000]"
+#BSUB -W 24:00
+#BSUB -m mothra
+#BSUB -o /sc/orga/projects/zhuj05a/Wenhui/HBV/script/wgs_88/11/normal/virusfinder1/VF_last.stdout
+#BSUB -eo /sc/orga/projects/zhuj05a/Wenhui/HBV/script/wgs_88/11/normal/virusfinder1/VF_last.stderr
+#BSUB -L /bin/bash
+export PERL5LIB=/hpc/users/wangm08/packages/trinity/trinityrnaseq_r2012-06-08/PerlLib:/hpc/users/wangm08/packages/BIO_DB_SAM/lib/perl5:/hpc/packages/minerva-common/CPAN/5.10.1/lib/perl5
+export JAVA_HOME=/hpc/packages/minerva-common/java/1.6.0_30/jdk1.6.0_30
+export PATH="/hpc/packages/minerva-common/java/1.6.0_30/jdk1.6.0_30/bin:$PATH"
+export _JAVA_OPTIONS=-Xmx1G
+export SAMTOOLS=/hpc/users/wangm08/packages/samtools/samtools-0.1.18
+export PATH="/hpc/users/wangm08/packages/samtools/samtools-0.1.18:$PATH"
+cd /sc/orga/projects/zhuj05a/Wenhui/HBV/VirusFinder/VirusFinder2.0
+./sys_check.pl
+
+
+cd /sc/orga/projects/zhuj05a/Wenhui/HBV/script/wgs_88/11/normal/virusfinder1
+perl /sc/orga/projects/zhuj05a/Wenhui/HBV/VirusFinder/VirusFinder2.0/VirusFinder_minthr8.pl -c  /sc/orga/projects/zhuj05a/Wenhui/HBV/script/wgs_88/11/normal/virusfinder1/configure_file_11N -o /sc/orga/projects/zhuj05a/Wenhui/HBV/script/wgs_88/11/normal/virusfinder1/output

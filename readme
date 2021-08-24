@@ -1,0 +1,82 @@
+whole genome sequencing HBV integration analysis pipeline
+
+bin_dir="." : dir containing all the codes, also the one where setting up modified VirsuFinder2 pipeline (Yoo S, Wang W, et al, BMC Medicine, 2017) vs. https://bioinfo.uth.edu/VirusFinder/.
+
+0. initialization: make hierarchical directories for analysis steps
+perl $bin_dir/vf_split_pipe_initial.pl normal
+1. collect the fastq file names.
+perl $bin_dir/generate_file_name.pl normal
+2. split the input files and filter the reads of duplication and low quality.
+perl $bin_dir/implement_virusseq_multi_crossreads.pl  1000 4000 20000 0:30 8:00 22N alloc VirusSeq/Mosaik_bin VirusSeq/Mosaik_JumpDb VirusSeq/VirusSeq_Script normal/virus_seq/ normal/ 5000000;
+chmod +x pipe_split.sh
+chmod +x pipe_filter.sh
+./pipe_split.sh
+rerun implement_virusseq_multi_crossreads.pl after fnishing split
+./pipe_filter.sh
+3. check the results of split and filter. If these results for a subfile is not available, redo it
+perl $bin_dir/check_pipe_line_v1.pl "tumor/virus_seq/" "tumor/file_name"
+chmod +x redo_split.sh
+chmod +x redo_filter.sh
+./redo_split.sh
+./redo_filter.sh
+###################################################################################################
+4.1 align the reads to human genome, keep the reads can't be aligned to human genome
+4.2 align the resulted reads to hg19+virus
+4.3 combine the reuslts of 4.2
+perl $bin_dir/new_version_bwa_mem/implement_virusfinder_multi_usb_pipeline_mem.pl "VirusFinder/VirusFinder2.0/" "0:30" "4:00" "48:00" "1000" "8000" "25000" "premium" "normal" "normal/virus_seq/split/" "normal/virusfinder/" "22N" "tumor/configure_file_82T" "tumor/hbv_ref_ncbi/HBV.fa" "tumor/hbv_ref_ncbi/bwa_hg19_hbv_index"
+
+use implement_virusfinder_multi_usb_pipeline_rnaseq_mem1.pl for rnaseq
+5. check the resutls of 4.1, 4.2, and 4.3 (this step is not changed)
+perl $bin_dir/check_vf_pipeline_v1.pl "normal/virusfinder/" "normal/file_name"
+chmod +x redo_unampped.sh
+chmod +x redo_integ1.sh
+chmod +x redo_integ2.sh
+./redo_unmapped.sh
+./redo_integ1.sh
+./redo_integ2.sh
+bsub < combine_integ_all.lsf
+6. collec the data for virusfinder
+cd virusfinder1
+perl $bin_dir/collect_data.pl "normal/virusfinder1/" "normal/virusfinder/" "11N" "normal/file_name"
+
+
+cp -r configure_file normal/virusfinder1/
+cp -r VF_last_step.lsf normal/virusfinder1/
+ln -s normal/virusfinder1/output/step3/b-align/alignment.sorted.bam normal/virusfinder/integ_step3/alignment_11N_merge.sorted.bam
+ln -s normal/virusfinder1/output/step3/b-align/alignment.sorted.bam.bai normal/virusfinder/integ_step3/alignment_11N_merge.sorted.bam.bai
+ln -s normal/virusfinder1/align_hsa/alignment_11N.bam normal/virusfinder1/output/step1/alignment.bam 
+bsub < VF_last_step.lsf
+
+7. clear the intermediate files (this step not changed)
+perl $bin_dir/clear_space.pl "11" "normal" "N";
+
+8. remap the scliped part of a read to HBV genome (actually not ran this step for 11N, just for example).
+cd normal/virusfinder1/output/step3/b-align/crest/
+module load samtools
+module load blat
+perl $bin_dir/new_version_bwa_mem/classify_sclipped_reads_v41.pl "22" "tumor" "./"
+perl $bin_dir/new_version_bwa_mem/remap_sclip_reads_v21.pl "22" "tumor" "./"
+
+9. collect the result of remapping:
+perl $bin_dir/new_version_bwa_mem/collect_result_remapping.pl "22" "tumor" "./"
+
+
+#######################################################remapping for d-alilgn (only for rnaseq)######################################################
+
+use 22 tuomr as example
+
+module load 'samtools'
+module load 'blat'
+
+perl $bin_dir/new_version_bwa_mem/classify_sclipped_reads_v9.pl "22" "tumor" "./"
+perl $bin_dir/new_version_bwa_mem/remap_sclip_reads_v4x.pl "22" "tumor" "./"
+perl $bin_dir/new_version_bwa_mem/collect_result_remapping_v2.pl "22" "tumor" "./"
+ 
+
+#####################################################speed up crest step####################################################################################################################################################
+split_crest.pl split the input target region in SVdetect/results-virus-loci.txt in to sub files and genrate lsf file for each splited input target region file
+run split_lsf.sh in step3/d-align/crest/
+
+combine_split.pl collect the results from each subregion and combine them in to step3/d-align/crest/results.predSV.txt results.predSV.txt-filtered resutls.predSV.txt2. IF something wrong, increase the time and memory and run split_lsf_redo.sh in step3/d-align/crest/
+
+at last run the VF_last.lsf. It will be very quick to collect all the results
